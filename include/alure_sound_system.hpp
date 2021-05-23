@@ -26,8 +26,6 @@ namespace al
 
 		virtual IAuxiliaryEffectSlot *CreateAuxiliaryEffectSlot() override;
 		
-		virtual PSoundSource CreateSource(ISoundBuffer &buffer) override;
-		virtual PSoundSource CreateSource(Decoder &decoder) override;
 		virtual PDecoder CreateDecoder(const std::string &path,bool bConvertToMono=false) override;
 		virtual PEffect CreateEffect() override;
 		virtual bool IsSupported(ChannelConfig channels,SampleType type) const override;
@@ -63,19 +61,12 @@ namespace al
 		alure::Context *GetALContext();
 	private:
 		AlureSoundSystem(alure::Device *device,alure::Context *context,float metersPerUnit);
+		virtual PSoundChannel CreateChannel(ISoundBuffer &buffer) override;
+		virtual PSoundChannel CreateChannel(Decoder &decoder) override;
 		virtual ISoundBuffer *DoLoadSound(const std::string &path,bool bConvertToMono=false,bool bAsync=true) override;
 		virtual std::unique_ptr<IListener> CreateListener() override;
-		virtual std::unique_ptr<SoundSourceFactory> InitializeSoundSourceFactory() override;
 
 		alure::Device *m_device = nullptr;
 		alure::Context *m_context = nullptr;
-	};
-
-	class FMSoundSourceFactory
-		: public SoundSourceFactory
-	{
-	public:
-		virtual ISoundSource *CreateSoundSource(ISoundSystem &system,ISoundBuffer &buffer) override;
-		virtual ISoundSource *CreateSoundSource(ISoundSystem &system,Decoder &decoder) override;
 	};
 };

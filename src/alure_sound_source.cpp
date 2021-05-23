@@ -5,9 +5,11 @@
 #include "alure_sound_source.hpp"
 #include "alure_sound_buffer.hpp"
 #include "alure_sound_system.hpp"
+#include "alsound_auxiliaryeffectslot.hpp"
 #include <alsound_coordinate_system.hpp>
+#include <AL/alure2.h>
 
-void al::AlureSoundSource::SetEffectParameters(uint32_t slotId,const IEffect::Params &params)
+void al::AlureSoundChannel::SetEffectParameters(uint32_t slotId,const EffectParams &params)
 {
 #if ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_ALURE
 	m_source->setSendFilter(slotId,reinterpret_cast<const alure::FilterParams&>(params));
@@ -16,7 +18,7 @@ void al::AlureSoundSource::SetEffectParameters(uint32_t slotId,const IEffect::Pa
 #endif
 }
 
-void al::AlureSoundSource::SetDirectFilter(const IEffect::Params &params)
+void al::AlureSoundChannel::SetDirectFilter(const EffectParams &params)
 {
 #if ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_ALURE
 	m_source->setDirectFilter(reinterpret_cast<const alure::FilterParams&>(m_directFilter = params));
@@ -25,50 +27,50 @@ void al::AlureSoundSource::SetDirectFilter(const IEffect::Params &params)
 #endif
 }
 
-void al::AlureSoundSource::DoRemoveInternalEffect(uint32_t slotId)
+void al::AlureSoundChannel::DoRemoveInternalEffect(uint32_t slotId)
 {
 	m_source->setAuxiliarySend(nullptr,slotId);
 }
 
-void al::AlureSoundSource::DoRemoveEffect(uint32_t slotId)
+void al::AlureSoundChannel::DoRemoveEffect(uint32_t slotId)
 {
 	m_source->setAuxiliarySend(nullptr,slotId);
 }
 
-virtual void AlureSoundSource::DoAddEffect(AuxiliaryEffectSlot &slot,uint32_t slotId,const IEffect::Params &params)
+void al::AlureSoundChannel::DoAddEffect(AuxiliaryEffectSlot &slot,uint32_t slotId,const EffectParams &params)
 {
 	m_source->setAuxiliarySendFilter(slot->GetALSlot(),slotId,reinterpret_cast<const alure::FilterParams&>(params));
 }
 
-al::FMSoundSource::FMSoundSource(ISoundSystem &system,ISoundBuffer &buffer,FMOD::Channel *source)
+al::AlureSoundChannel::AlureSoundChannel(ISoundSystem &system,ISoundBuffer &buffer,FMOD::Channel *source)
 	: AlureSoundSource(system,buffer),m_source{source}
 {}
-al::FMSoundSource::FMSoundSource(ISoundSystem &system,Decoder &decoder,FMOD::Channel *source)
+al::AlureSoundChannel::AlureSoundChannel(ISoundSystem &system,Decoder &decoder,FMOD::Channel *source)
 	: AlureSoundSource(system,decoder),m_source{source}
 {}
-bool al::FMSoundSource::InitializeChannel()
+bool al::AlureSoundChannel::InitializeChannel()
 {
 	if(m_source != nullptr || m_buffer.expired())
 		return false;
 	auto *sound = static_cast<FMSoundBuffer*>(m_buffer.lock().get())->GetFMODSound();
 	if(sound == nullptr || CheckResultAndUpdateValidity(static_cast<FMSoundSystem&>(m_system).GetFMODLowLevelSystem().playSound(sound,nullptr,true,&m_source)) == false)
 		return false;
-	return AlureSoundSource::InitializeChannel();
+	return AlureSoundChannel::InitializeChannel();
 }
-void al::FMSoundSource::Update()
+void al::AlureSoundChannel::Update()
 {
-	AlureSoundSource::Update();
+	AlureSoundChannel::Update();
 	if(m_source != nullptr)
 		m_soundSourceData.offset = GetOffset();
 }
 
-void al::FMSoundSource::SetFrameOffset(uint64_t offset)
+void al::AlureSoundChannel::SetFrameOffset(uint64_t offset)
 {
 	m_soundSourceData.offset = offset;
 	if(m_source != nullptr)
 		CheckResultAndUpdateValidity(m_source->setPosition(offset,FMOD_TIMEUNIT_PCM));
 }
-uint64_t al::FMSoundSource::GetFrameOffset(uint64_t *latency) const
+uint64_t al::AlureSoundChannel::GetFrameOffset(uint64_t *latency) const
 {
 	if(m_source != nullptr)
 	{
@@ -79,20 +81,20 @@ uint64_t al::FMSoundSource::GetFrameOffset(uint64_t *latency) const
 	return m_soundSourceData.offset;
 }
 
-void al::FMSoundSource::Stop()
+void al::AlureSoundChannel::Stop()
 {
 	if(m_source != nullptr)
 		CheckResultAndUpdateValidity(m_source->stop());
 	m_bSchedulePlay = false;
 }
 
-void al::FMSoundSource::Pause()
+void al::AlureSoundChannel::Pause()
 {
 	if(m_source != nullptr)
 		CheckResultAndUpdateValidity(m_source->setPaused(true));
 }
 
-void al::FMSoundSource::Play()
+void al::AlureSoundChannel::Play()
 {
 	InitializeChannel();
 	m_soundSourceData.offset = 0ull;
@@ -102,7 +104,7 @@ void al::FMSoundSource::Play()
 		CheckResultAndUpdateValidity(m_source->setPaused(false));
 }
 
-void al::FMSoundSource::Resume()
+void al::AlureSoundChannel::Resume()
 {
 	if(m_source == nullptr)
 	{
@@ -115,7 +117,7 @@ void al::FMSoundSource::Resume()
 		CheckResultAndUpdateValidity(m_source->setPaused(false));
 }
 
-bool al::FMSoundSource::IsPlaying() const
+bool al::AlureSoundChannel::IsPlaying() const
 {
 	if(m_bSchedulePlay == true)
 		return true;
@@ -127,18 +129,18 @@ bool al::FMSoundSource::IsPlaying() const
 	}
 	return false;
 }
-bool al::FMSoundSource::IsPaused() const
+bool al::AlureSoundChannel::IsPaused() const
 {
 	return !IsPlaying();
 }
 
-void al::FMSoundSource::SetPriority(uint32_t priority)
+void al::AlureSoundChannel::SetPriority(uint32_t priority)
 {
 	m_soundSourceData.priority = priority;
 	if(m_source != nullptr)
 		CheckResultAndUpdateValidity(m_source->setPriority(priority));
 }
-uint32_t al::FMSoundSource::GetPriority() const
+uint32_t al::AlureSoundChannel::GetPriority() const
 {
 	if(m_source != nullptr)
 	{
@@ -149,7 +151,7 @@ uint32_t al::FMSoundSource::GetPriority() const
 	return m_soundSourceData.priority;
 }
 
-void al::FMSoundSource::SetLooping(bool bLoop)
+void al::AlureSoundChannel::SetLooping(bool bLoop)
 {
 	m_soundSourceData.looping = bLoop;
 	if(m_source != nullptr)
@@ -166,7 +168,7 @@ void al::FMSoundSource::SetLooping(bool bLoop)
 		}
 	}
 }
-bool al::FMSoundSource::IsLooping() const
+bool al::AlureSoundChannel::IsLooping() const
 {
 	if(m_source != nullptr)
 	{
@@ -177,13 +179,13 @@ bool al::FMSoundSource::IsLooping() const
 	return m_soundSourceData.looping;
 }
 
-void al::FMSoundSource::SetPitch(float pitch)
+void al::AlureSoundChannel::SetPitch(float pitch)
 {
 	m_soundSourceData.pitch = pitch;
 	if(m_source != nullptr)
 		CheckResultAndUpdateValidity(m_source->setPitch(pitch));
 }
-float al::FMSoundSource::GetPitch() const
+float al::AlureSoundChannel::GetPitch() const
 {
 	if(m_source != nullptr)
 	{
@@ -194,13 +196,13 @@ float al::FMSoundSource::GetPitch() const
 	return m_soundSourceData.pitch;
 }
 
-void al::FMSoundSource::SetGain(float gain)
+void al::AlureSoundChannel::SetGain(float gain)
 {
 	m_soundSourceData.gain = gain;
 	if(m_source != nullptr)
 		CheckResultAndUpdateValidity(m_source->setVolume(gain));
 }
-float al::FMSoundSource::GetGain() const
+float al::AlureSoundChannel::GetGain() const
 {
 	if(m_source != nullptr)
 	{
@@ -211,7 +213,7 @@ float al::FMSoundSource::GetGain() const
 	return m_soundSourceData.gain;
 }
 
-void al::FMSoundSource::SetDistanceRange(float refDist,float maxDist)
+void al::AlureSoundChannel::SetDistanceRange(float refDist,float maxDist)
 {
 	refDist = umath::min(refDist,maxDist);
 	auto refDistAudio = al::to_audio_distance(refDist);
@@ -223,7 +225,7 @@ void al::FMSoundSource::SetDistanceRange(float refDist,float maxDist)
 		CheckResultAndUpdateValidity(m_source->set3DMinMaxDistance(refDistAudio,maxDistAudio));
 }
 
-std::pair<float,float> al::FMSoundSource::GetDistanceRange() const
+std::pair<float,float> al::AlureSoundChannel::GetDistanceRange() const
 {
 	if(Is3D() && m_source != nullptr)
 	{
@@ -234,7 +236,7 @@ std::pair<float,float> al::FMSoundSource::GetDistanceRange() const
 	return m_soundSourceData.distanceRange;
 }
 
-void al::FMSoundSource::SetPosition(const Vector3 &pos)
+void al::AlureSoundChannel::SetPosition(const Vector3 &pos)
 {
 	auto posAudio = al::to_audio_position(pos);
 	m_soundSourceData.position = pos;
@@ -247,7 +249,7 @@ void al::FMSoundSource::SetPosition(const Vector3 &pos)
 	}
 }
 
-Vector3 al::FMSoundSource::GetPosition() const
+Vector3 al::AlureSoundChannel::GetPosition() const
 {
 	if(Is3D() && m_source != nullptr)
 	{
@@ -258,7 +260,7 @@ Vector3 al::FMSoundSource::GetPosition() const
 	return m_soundSourceData.position;
 }
 
-void al::FMSoundSource::SetVelocity(const Vector3 &vel)
+void al::AlureSoundChannel::SetVelocity(const Vector3 &vel)
 {
 	auto velAudio = al::to_audio_position(vel);
 	m_soundSourceData.velocity = vel;
@@ -270,7 +272,7 @@ void al::FMSoundSource::SetVelocity(const Vector3 &vel)
 		return;
 	}
 }
-Vector3 al::FMSoundSource::GetVelocity() const
+Vector3 al::AlureSoundChannel::GetVelocity() const
 {
 	if(Is3D() && m_source != nullptr)
 	{
@@ -281,18 +283,18 @@ Vector3 al::FMSoundSource::GetVelocity() const
 	return m_soundSourceData.velocity;
 }
 
-void al::FMSoundSource::SetDirection(const Vector3 &dir)
+void al::AlureSoundChannel::SetDirection(const Vector3 &dir)
 {
 	auto dirAudio = al::to_audio_direction(dir);
 	// FMOD TODO
 }
-Vector3 al::FMSoundSource::GetDirection() const
+Vector3 al::AlureSoundChannel::GetDirection() const
 {
 	// FMOD TODO
 	return {};
 }
 
-void al::FMSoundSource::SetOrientation(const Vector3 &at,const Vector3 &up)
+void al::AlureSoundChannel::SetOrientation(const Vector3 &at,const Vector3 &up)
 {
 	auto atAudio = al::to_audio_direction(at);
 	auto atUp = al::to_audio_direction(up);
@@ -300,13 +302,13 @@ void al::FMSoundSource::SetOrientation(const Vector3 &at,const Vector3 &up)
 	//FMOD_VECTOR orientation {at.x,at.y,at.z};
 	//al::fmod::check_result(m_source->set3DConeOrientation(&orientation));
 }
-std::pair<Vector3,Vector3> al::FMSoundSource::GetOrientation() const
+std::pair<Vector3,Vector3> al::AlureSoundChannel::GetOrientation() const
 {
 	// FMOD TODO
 	return {{},{}};
 }
 
-void al::FMSoundSource::SetConeAngles(float inner,float outer)
+void al::AlureSoundChannel::SetConeAngles(float inner,float outer)
 {
 	m_soundSourceData.coneAngles = {inner,outer};
 	UpdateMode();
@@ -317,7 +319,7 @@ void al::FMSoundSource::SetConeAngles(float inner,float outer)
 		CheckResultAndUpdateValidity(m_source->set3DConeSettings(inner,outer,volume));
 	}
 }
-std::pair<float,float> al::FMSoundSource::GetConeAngles() const
+std::pair<float,float> al::AlureSoundChannel::GetConeAngles() const
 {
 	if(Is3D() && m_source != nullptr)
 	{
@@ -328,57 +330,57 @@ std::pair<float,float> al::FMSoundSource::GetConeAngles() const
 	return m_soundSourceData.coneAngles;
 }
 
-void al::FMSoundSource::SetOuterConeGains(float gain,float gainHF)
+void al::AlureSoundChannel::SetOuterConeGains(float gain,float gainHF)
 {
 	// FMOD TODO
 }
 
-std::pair<float,float> al::FMSoundSource::GetOuterConeGains() const
+std::pair<float,float> al::AlureSoundChannel::GetOuterConeGains() const
 {
 	// FMOD TODO
 	return {0.f,0.f};
 }
 
-float al::FMSoundSource::GetOuterConeGain() const
+float al::AlureSoundChannel::GetOuterConeGain() const
 {
 	// FMOD TODO
 	return 0.f;
 }
-float al::FMSoundSource::GetOuterConeGainHF() const
+float al::AlureSoundChannel::GetOuterConeGainHF() const
 {
 	// FMOD TODO
 	return 0.f;
 }
 
-void al::FMSoundSource::SetRolloffFactors(float factor,float roomFactor)
+void al::AlureSoundChannel::SetRolloffFactors(float factor,float roomFactor)
 {
 	// FMOD TODO
 }
 
-std::pair<float,float> al::FMSoundSource::GetRolloffFactors() const
+std::pair<float,float> al::AlureSoundChannel::GetRolloffFactors() const
 {
 	// FMOD TODO
 	return {0.f,0.f};
 }
 
-float al::FMSoundSource::GetRolloffFactor() const
+float al::AlureSoundChannel::GetRolloffFactor() const
 {
 	// FMOD TODO
 	return 0.f;
 }
-float al::FMSoundSource::GetRoomRolloffFactor() const
+float al::AlureSoundChannel::GetRoomRolloffFactor() const
 {
 	// FMOD TODO
 	return 0.f;
 }
 
-void al::FMSoundSource::SetDopplerFactor(float factor)
+void al::AlureSoundChannel::SetDopplerFactor(float factor)
 {
 	m_soundSourceData.dopplerFactor = factor;
 	if(Is3D() && m_source != nullptr)
 		CheckResultAndUpdateValidity(m_source->set3DDopplerLevel(factor));
 }
-float al::FMSoundSource::GetDopplerFactor() const
+float al::AlureSoundChannel::GetDopplerFactor() const
 {
 	if(Is3D() && m_source != nullptr)
 	{
@@ -389,7 +391,7 @@ float al::FMSoundSource::GetDopplerFactor() const
 	return m_soundSourceData.dopplerFactor;
 }
 
-void al::FMSoundSource::SetRelative(bool bRelative)
+void al::AlureSoundChannel::SetRelative(bool bRelative)
 {
 	auto bRelativeOld = IsRelative();
 	m_soundSourceData.relativeToListener = bRelative;
@@ -397,36 +399,36 @@ void al::FMSoundSource::SetRelative(bool bRelative)
 	if(bRelative != bRelativeOld)
 		CallCallbacks<void,bool>("OnRelativeChanged",bRelative);
 }
-bool al::FMSoundSource::IsRelative() const
+bool al::AlureSoundChannel::IsRelative() const
 {
 	return m_soundSourceData.relativeToListener;
 }
 
-void al::FMSoundSource::SetRadius(float radius)
+void al::AlureSoundChannel::SetRadius(float radius)
 {
 	auto radiusAudio = al::to_audio_distance(radius);
 	SetMaxDistance(radiusAudio);
 }
-float al::FMSoundSource::GetRadius() const
+float al::AlureSoundChannel::GetRadius() const
 {
 	return al::to_game_distance(GetMaxDistance());
 }
 
-void al::FMSoundSource::SetStereoAngles(float leftAngle,float rightAngle)
+void al::AlureSoundChannel::SetStereoAngles(float leftAngle,float rightAngle)
 {
 	// FMOD TODO
 }
-std::pair<float,float> al::FMSoundSource::GetStereoAngles() const
+std::pair<float,float> al::AlureSoundChannel::GetStereoAngles() const
 {
 	// FMOD TODO
 	return {0.f,0.f};
 }
 
-void al::FMSoundSource::SetAirAbsorptionFactor(float factor)
+void al::AlureSoundChannel::SetAirAbsorptionFactor(float factor)
 {
 	// FMOD TODO
 }
-float al::FMSoundSource::GetAirAbsorptionFactor() const
+float al::AlureSoundChannel::GetAirAbsorptionFactor() const
 {
 #if ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_ALURE
 	return m_source->getAirAbsorptionFactor();
@@ -436,37 +438,37 @@ float al::FMSoundSource::GetAirAbsorptionFactor() const
 #endif
 }
 
-void al::FMSoundSource::SetGainAuto(bool directHF,bool send,bool sendHF)
+void al::AlureSoundChannel::SetGainAuto(bool directHF,bool send,bool sendHF)
 {
 	// FMOD TODO
 }
-std::tuple<bool,bool,bool> al::FMSoundSource::GetGainAuto() const
+std::tuple<bool,bool,bool> al::AlureSoundChannel::GetGainAuto() const
 {
 	// FMOD TODO
 	return {false,false,false};
 }
 
-bool al::FMSoundSource::GetDirectGainHFAuto() const
+bool al::AlureSoundChannel::GetDirectGainHFAuto() const
 {
 	// FMOD TODO
 	return false;
 }
-bool al::FMSoundSource::GetSendGainAuto() const
+bool al::AlureSoundChannel::GetSendGainAuto() const
 {
 	// FMOD TODO
 	return false;
 }
-bool al::FMSoundSource::GetSendGainHFAuto() const
+bool al::AlureSoundChannel::GetSendGainHFAuto() const
 {
 	// FMOD TODO
 	return false;
 }
-void al::AlureSoundSource::SetFMOD3DAttributesEffective(bool b)
+void al::AlureSoundChannel::SetFMOD3DAttributesEffective(bool b)
 {
 	m_b3DAttributesEffective = b;
 	UpdateMode();
 }
-void al::AlureSoundSource::UpdateMode()
+void al::AlureSoundChannel::UpdateMode()
 {
 	FMOD_MODE mode;
 	if(CheckResultAndUpdateValidity(m_source->getMode(&mode)) == false)
@@ -510,8 +512,8 @@ void al::AlureSoundSource::UpdateMode()
 	SetConeAngles(coneAngles.first,coneAngles.second);
 	SetDopplerFactor(dopplerFactor);
 }
-void al::AlureSoundSource::InvalidateSource() const {m_source = nullptr;}
-bool al::AlureSoundSource::Is3D() const
+void al::AlureSoundChannel::InvalidateSource() const {m_source = nullptr;}
+bool al::AlureSoundChannel::Is3D() const
 {
 	if(m_source != nullptr)
 	{
@@ -521,8 +523,8 @@ bool al::AlureSoundSource::Is3D() const
 	}
 	return false;
 }
-bool al::AlureSoundSource::Is2D() const {return !Is3D();}
-bool al::AlureSoundSource::InitializeChannel()
+bool al::AlureSoundChannel::Is2D() const {return !Is3D();}
+bool al::AlureSoundChannel::InitializeChannel()
 {
 	if(m_source != nullptr || m_buffer.expired())
 		return false;
@@ -542,7 +544,7 @@ bool al::AlureSoundSource::InitializeChannel()
 #endif
 	return true;
 }
-bool al::AlureSoundSource::CheckResultAndUpdateValidity(uint32_t result) const
+bool al::AlureSoundChannel::CheckResultAndUpdateValidity(uint32_t result) const
 {
 	if(result == FMOD_ERR_INVALID_HANDLE || result == FMOD_ERR_CHANNEL_STOLEN)
 	{
@@ -553,7 +555,7 @@ bool al::AlureSoundSource::CheckResultAndUpdateValidity(uint32_t result) const
 	return result == FMOD_OK;
 }
 
-void al::AlureSoundSource::SetGainRange(float minGain,float maxGain)
+void al::AlureSoundChannel::SetGainRange(float minGain,float maxGain)
 {
 #if ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_ALURE
 	m_source->setGainRange(minGain,maxGain);
@@ -563,7 +565,7 @@ void al::AlureSoundSource::SetGainRange(float minGain,float maxGain)
 	SetGain(umath::clamp(GetGain(),minGain,maxGain));
 #endif
 }
-std::pair<float,float> al::AlureSoundSource::GetGainRange() const
+std::pair<float,float> al::AlureSoundChannel::GetGainRange() const
 {
 #if ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_ALURE
 	return m_source->getGainRange();
@@ -572,7 +574,7 @@ std::pair<float,float> al::AlureSoundSource::GetGainRange() const
 #endif
 }
 
-float al::AlureSoundSource::GetMinGain() const
+float al::AlureSoundChannel::GetMinGain() const
 {
 #if ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_ALURE
 	return m_source->getMinGain();
@@ -581,7 +583,7 @@ float al::AlureSoundSource::GetMinGain() const
 #endif
 }
 
-float al::AlureSoundSource::GetMaxGain() const
+float al::AlureSoundChannel::GetMaxGain() const
 {
 #if ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_ALURE
 	return m_source->getMaxGain();
@@ -590,5 +592,5 @@ float al::AlureSoundSource::GetMaxGain() const
 #endif
 }
 
-const al::InternalSource *al::AlureSoundSource::GetInternalSource() const {return const_cast<al::AlureSoundSource*>(this)->GetInternalSource();}
-al::InternalSource *al::AlureSoundSource::GetInternalSource() {return m_source;}
+const al::InternalSource *al::AlureSoundChannel::GetInternalSource() const {return const_cast<al::AlureSoundSource*>(this)->GetInternalSource();}
+al::InternalSource *al::AlureSoundChannel::GetInternalSource() {return m_source;}

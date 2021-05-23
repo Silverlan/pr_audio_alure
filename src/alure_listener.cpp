@@ -16,9 +16,6 @@ void al::AlureListener::DoSetMetersPerUnit(float mu)
 	m_listener.setMetersPerUnit(m_metersPerUnit);
 }
 
-al::AlureListener::AlureListener(al::ISoundSystem &system)
-	: IListener{system}
-{}
 void al::AlureListener::SetGain(float gain)
 {
 #if ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_ALURE

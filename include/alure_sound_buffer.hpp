@@ -13,9 +13,10 @@ namespace al
 		: public ISoundBuffer
 	{
 	public:
-		AlureSoundBuffer();
+		AlureSoundBuffer(alure::Context &context,alure::Buffer *buffer,const std::string &path);
 		virtual ~AlureSoundBuffer() override;
 
+		alure::Buffer *GetALBuffer() {return m_buffer;}
 		virtual bool IsReady() const override;
 
 		virtual uint32_t GetSize() const override;
@@ -30,6 +31,9 @@ namespace al
 
 		virtual std::string GetName() const override;
 		virtual bool IsInUse() const override;
+	private:
+		alure::Buffer *m_buffer = nullptr;
+		alure::Context &m_context;
 	};
 };
 

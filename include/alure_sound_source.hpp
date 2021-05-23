@@ -9,12 +9,12 @@
 
 namespace al
 {
-	class AlureSoundSource
-		: public ISoundSource
+	class AlureSoundChannel
+		: public ISoundChannel
 	{
 	public:
-		AlureSoundSource(ISoundSystem &system,ISoundBuffer &buffer);
-		AlureSoundSource(ISoundSystem &system,Decoder &decoder);
+		AlureSoundChannel(ISoundSystem &system,ISoundBuffer &buffer);
+		AlureSoundChannel(ISoundSystem &system,Decoder &decoder);
 
 		virtual void Update() override;
 
@@ -86,12 +86,13 @@ namespace al
 		virtual bool GetSendGainAuto() const override;
 		virtual bool GetSendGainHFAuto() const override;
 
-		virtual void SetDirectFilter(const IEffect::Params &params) override {}
-		virtual void SetEffectParameters(uint32_t slotId,const IEffect::Params &params) override {}
+		virtual void SetDirectFilter(const EffectParams &params) override {}
+		virtual void SetEffectParameters(uint32_t slotId,const EffectParams &params) override {}
 	protected:
-		virtual void DoAddEffect(AuxiliaryEffectSlot &slot,uint32_t slotId,const IEffect::Params &params) override {}
+		virtual void DoAddEffect(AuxiliaryEffectSlot &slot,uint32_t slotId,const EffectParams &params) override {}
 		virtual void DoRemoveInternalEffect(uint32_t slotId) override {}
 		virtual void DoRemoveEffect(uint32_t slotId) override {}
+		mutable alure::Source *m_source = nullptr;
 	};
 };
 

@@ -4,10 +4,28 @@
 
 #include "alure_effect.hpp"
 #include "alure_sound_system.hpp"
+#include <AL/alure2.h>
+
+static alure::Context *apply_effect_type(alure::Effect *effect,int32_t newType,const std::string &typeName,ALuint &effectId)
+{
+	auto *alEffect = static_cast<alure::Effect*>(effect);
+	auto type = alEffect->getType();
+	effectId = alEffect->getId();
+
+	if(type != newType)
+	{
+		alGetError();
+		context->alEffecti(effectId,AL_EFFECT_TYPE,newType);
+		if(alGetError() == AL_NO_ERROR)
+			alEffect->setType(newType);
+		else
+			throw std::runtime_error("Failed to set " +typeName +" type");
+	}
+	return context;
+}
 
 void al::AlureEffect::SetProperties(al::EfxChorusProperties props)
 {
-#if ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_ALURE
 	ALuint effectId;
 	auto *context = apply_effect_type(m_effect,AL_EFFECT_CHORUS,"chorus",effectId);
 	if(context == nullptr)
@@ -18,17 +36,6 @@ void al::AlureEffect::SetProperties(al::EfxChorusProperties props)
 	context->alEffectf(effectId,AL_CHORUS_DEPTH,props.flDepth);
 	context->alEffectf(effectId,AL_CHORUS_FEEDBACK,props.flFeedback);
 	context->alEffectf(effectId,AL_CHORUS_DELAY,props.flDelay);
-#elif ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_FMOD
-	FMOD::DSP *dsp;
-	al::fmod::check_result(static_cast<FMSoundSystem&>(m_soundSystem).GetFMODLowLevelSystem().createDSPByType(FMOD_DSP_TYPE_CHORUS,&dsp));
-	m_fmDsp = std::shared_ptr<FMOD::DSP>(dsp,[](FMOD::DSP *dsp) {
-		al::fmod::check_result(dsp->release());
-	});
-	dsp->setParameterFloat(FMOD_DSP_ECHO_DELAY,props.flDelay);
-	dsp->setParameterFloat(FMOD_DSP_ECHO_FEEDBACK,props.flFeedback);
-	//dsp->setParameterFloat(FMOD_DSP_ECHO_DRYLEVEL,props.);
-	//dsp->setParameterFloat(FMOD_DSP_ECHO_WETLEVEL,props.);
-#endif
 }
 
 void al::AlureEffect::SetProperties(al::EfxEaxReverbProperties props)
@@ -38,7 +45,6 @@ void al::AlureEffect::SetProperties(al::EfxEaxReverbProperties props)
 
 void al::AlureEffect::SetProperties(al::EfxDistortionProperties props)
 {
-#if ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_ALURE
 	ALuint effectId;
 	auto *context = apply_effect_type(m_effect,AL_EFFECT_DISTORTION,"distortion",effectId);
 	if(context == nullptr)
@@ -48,18 +54,9 @@ void al::AlureEffect::SetProperties(al::EfxDistortionProperties props)
 	context->alEffectf(effectId,AL_DISTORTION_LOWPASS_CUTOFF,props.flLowpassCutoff);
 	context->alEffectf(effectId,AL_DISTORTION_EQCENTER,props.flEQCenter);
 	context->alEffectf(effectId,AL_DISTORTION_EQBANDWIDTH,props.flEQBandwidth);
-#elif ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_FMOD
-	FMOD::DSP *dsp;
-	al::fmod::check_result(static_cast<FMSoundSystem&>(m_soundSystem).GetFMODLowLevelSystem().createDSPByType(FMOD_DSP_TYPE_DISTORTION,&dsp));
-	m_fmDsp = std::shared_ptr<FMOD::DSP>(dsp,[](FMOD::DSP *dsp) {
-		al::fmod::check_result(dsp->release());
-	});
-	dsp->setParameterFloat(FMOD_DSP_DISTORTION_LEVEL,props.flGain);
-#endif
 }
 void al::AlureEffect::SetProperties(al::EfxEchoProperties props)
 {
-#if ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_ALURE
 	ALuint effectId;
 	auto *context = apply_effect_type(m_effect,AL_EFFECT_ECHO,"echo",effectId);
 	if(context == nullptr)
@@ -69,21 +66,9 @@ void al::AlureEffect::SetProperties(al::EfxEchoProperties props)
 	context->alEffectf(effectId,AL_ECHO_DAMPING,props.flDamping);
 	context->alEffectf(effectId,AL_ECHO_FEEDBACK,props.flFeedback);
 	context->alEffectf(effectId,AL_ECHO_SPREAD,props.flSpread);
-#elif ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_FMOD
-	FMOD::DSP *dsp;
-	al::fmod::check_result(static_cast<FMSoundSystem&>(m_soundSystem).GetFMODLowLevelSystem().createDSPByType(FMOD_DSP_TYPE_ECHO,&dsp));
-	m_fmDsp = std::shared_ptr<FMOD::DSP>(dsp,[](FMOD::DSP *dsp) {
-		al::fmod::check_result(dsp->release());
-	});
-	dsp->setParameterFloat(FMOD_DSP_ECHO_DELAY,props.flDelay);
-	dsp->setParameterFloat(FMOD_DSP_ECHO_FEEDBACK,props.flFeedback);
-	//dsp->setParameterFloat(FMOD_DSP_ECHO_DRYLEVEL,props.);
-	//dsp->setParameterFloat(FMOD_DSP_ECHO_WETLEVEL,props.);
-#endif
 }
 void al::AlureEffect::SetProperties(al::EfxFlangerProperties props)
 {
-#if ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_ALURE
 	ALuint effectId;
 	auto *context = apply_effect_type(m_effect,AL_EFFECT_FLANGER,"flanger",effectId);
 	if(context == nullptr)
@@ -94,20 +79,9 @@ void al::AlureEffect::SetProperties(al::EfxFlangerProperties props)
 	context->alEffectf(effectId,AL_FLANGER_DEPTH,props.flDepth);
 	context->alEffectf(effectId,AL_FLANGER_FEEDBACK,props.flFeedback);
 	context->alEffectf(effectId,AL_FLANGER_DELAY,props.flDelay);
-#elif ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_FMOD
-	FMOD::DSP *dsp;
-	al::fmod::check_result(static_cast<FMSoundSystem&>(m_soundSystem).GetFMODLowLevelSystem().createDSPByType(FMOD_DSP_TYPE_FLANGE,&dsp));
-	m_fmDsp = std::shared_ptr<FMOD::DSP>(dsp,[](FMOD::DSP *dsp) {
-		al::fmod::check_result(dsp->release());
-	});
-	//dsp->setParameterFloat(FMOD_DSP_FLANGE_MIX,props.); // FMOD TODO
-	dsp->setParameterFloat(FMOD_DSP_FLANGE_DEPTH,props.flDepth);
-	dsp->setParameterFloat(FMOD_DSP_FLANGE_RATE,props.flRate);
-#endif
 }
 void al::AlureEffect::SetProperties(al::EfxFrequencyShifterProperties props)
 {
-#if ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_ALURE
 	ALuint effectId;
 	auto *context = apply_effect_type(m_effect,AL_EFFECT_FREQUENCY_SHIFTER,"frequency shifter",effectId);
 	if(context == nullptr)
@@ -115,13 +89,9 @@ void al::AlureEffect::SetProperties(al::EfxFrequencyShifterProperties props)
 	context->alEffectf(effectId,AL_FREQUENCY_SHIFTER_FREQUENCY,props.flFrequency);
 	context->alEffecti(effectId,AL_FREQUENCY_SHIFTER_LEFT_DIRECTION,props.iLeftDirection);
 	context->alEffecti(effectId,AL_FREQUENCY_SHIFTER_RIGHT_DIRECTION,props.iRightDirection);
-#elif ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_FMOD
-	// FMOD TODO
-#endif
 }
 void al::AlureEffect::SetProperties(al::EfxVocalMorpherProperties props)
 {
-#if ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_ALURE
 	ALuint effectId;
 	auto *context = apply_effect_type(m_effect,AL_EFFECT_VOCAL_MORPHER,"vocal morpher",effectId);
 	if(context == nullptr)
@@ -132,26 +102,18 @@ void al::AlureEffect::SetProperties(al::EfxVocalMorpherProperties props)
 	context->alEffecti(effectId,AL_VOCAL_MORPHER_PHONEMEB_COARSE_TUNING,props.iPhonemeBCoarseTuning);
 	context->alEffecti(effectId,AL_VOCAL_MORPHER_WAVEFORM,props.iWaveform);
 	context->alEffectf(effectId,AL_VOCAL_MORPHER_RATE,props.flRate);
-#elif ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_FMOD
-	// FMOD TODO
-#endif
 }
 void al::AlureEffect::SetProperties(al::EfxPitchShifterProperties props)
 {
-#if ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_ALURE
 	ALuint effectId;
 	auto *context = apply_effect_type(m_effect,AL_EFFECT_PITCH_SHIFTER,"pitch shifter",effectId);
 	if(context == nullptr)
 		return;
 	context->alEffecti(effectId,AL_PITCH_SHIFTER_COARSE_TUNE,props.iCoarseTune);
 	context->alEffecti(effectId,AL_PITCH_SHIFTER_FINE_TUNE,props.iFineTune);
-#elif ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_FMOD
-	// FMOD TODO
-#endif
 }
 void al::AlureEffect::SetProperties(al::EfxRingModulatorProperties props)
 {
-#if ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_ALURE
 	ALuint effectId;
 	auto *context = apply_effect_type(m_effect,AL_EFFECT_RING_MODULATOR,"ring modulator",effectId);
 	if(context == nullptr)
@@ -159,13 +121,9 @@ void al::AlureEffect::SetProperties(al::EfxRingModulatorProperties props)
 	context->alEffectf(effectId,AL_RING_MODULATOR_FREQUENCY,props.flFrequency);
 	context->alEffectf(effectId,AL_RING_MODULATOR_HIGHPASS_CUTOFF,props.flHighpassCutoff);
 	context->alEffecti(effectId,AL_RING_MODULATOR_WAVEFORM,props.iWaveform);
-#elif ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_FMOD
-	// FMOD TODO
-#endif
 }
 void al::AlureEffect::SetProperties(al::EfxAutoWahProperties props)
 {
-#if ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_ALURE
 	ALuint effectId;
 	auto *context = apply_effect_type(m_effect,AL_EFFECT_AUTOWAH,"auto wah",effectId);
 	if(context == nullptr)
@@ -174,25 +132,17 @@ void al::AlureEffect::SetProperties(al::EfxAutoWahProperties props)
 	context->alEffectf(effectId,AL_AUTOWAH_RELEASE_TIME,props.flReleaseTime);
 	context->alEffectf(effectId,AL_AUTOWAH_RESONANCE,props.flResonance);
 	context->alEffectf(effectId,AL_AUTOWAH_PEAK_GAIN,props.flPeakGain);
-#elif ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_FMOD
-	// FMOD TODO
-#endif
 }
 void al::AlureEffect::SetProperties(al::EfxCompressor props)
 {
-#if ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_ALURE
 	ALuint effectId;
 	auto *context = apply_effect_type(m_effect,AL_EFFECT_COMPRESSOR,"compressor",effectId);
 	if(context == nullptr)
 		return;
 	context->alEffecti(effectId,AL_COMPRESSOR_ONOFF,props.iOnOff);
-#elif ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_FMOD
-	// FMOD TODO
-#endif
 }
 void al::AlureEffect::SetProperties(al::EfxEqualizer props)
 {
-#if ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_ALURE
 	ALuint effectId;
 	auto *context = apply_effect_type(m_effect,AL_EFFECT_EQUALIZER,"equalizer",effectId);
 	if(context == nullptr)
@@ -207,7 +157,4 @@ void al::AlureEffect::SetProperties(al::EfxEqualizer props)
 	context->alEffectf(effectId,AL_EQUALIZER_MID2_WIDTH,props.flMid2Width);
 	context->alEffectf(effectId,AL_EQUALIZER_HIGH_GAIN,props.flHighGain);
 	context->alEffectf(effectId,AL_EQUALIZER_HIGH_CUTOFF,props.flHighCutoff);
-#elif ALSYS_LIBRARY_TYPE == ALSYS_LIBRARY_FMOD
-	// FMOD TODO
-#endif
 }
