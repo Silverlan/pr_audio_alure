@@ -1,0 +1,3 @@
+[submodule "third_party/alure"]
+	path = third_party/alure
+	url = https://github.com/kcat/alure.git
