@@ -16,3 +16,7 @@ link_external_library(alure)
 link_external_library(openal_soft)
 
 add_dependencies(${PROJ_NAME} alsoundsystem)
+
+set_target_properties(pr_audio_alure PROPERTIES FOLDER modules/audio)
+
+set_property(GLOBAL PROPERTY PRAGMA_MODULE_SKIP_TARGET_PROPERTY_FOLDER 1)
